@@ -1,0 +1,9 @@
+fastapi>=0.110
+uvicorn>=0.29
+pydantic>=2.5
+PyYAML>=6.0
+httpx>=0.27
+# optional - only needed to run the live agent on Claude (ANTHROPIC_API_KEY)
+anthropic>=1.0
+# tests
+pytest>=8.0

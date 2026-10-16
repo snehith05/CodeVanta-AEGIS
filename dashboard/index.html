@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AEGIS Command Center</title>
+  <meta name="description" content="Runtime firewall for autonomous AI agents - every action evaluated, enforced and audited.">
+  <link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div id="banner" class="banner hidden" role="status"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <img src="/static/logo.svg" alt="AEGIS shield" class="logo">
+      <div>
+        <div class="wordmark">AEGIS</div>
+        <div class="tagline">Agent Execution Guard &amp; Intervention System</div>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <button data-tab="command" class="active">Command Center</button>
+      <button data-tab="lab">Red-Team Lab</button>
+      <button data-tab="live">Live Agent</button>
+      <button data-tab="ledger">Audit Ledger</button>
+      <button data-tab="policy">Policy</button>
+    </nav>
+    <div class="controls">
+      <div class="status-pill" id="shieldStatus"><span class="dot"></span><span class="txt">SHIELD ACTIVE</span></div>
+      <div class="segmented" id="modeToggle" role="group" aria-label="Enforcement mode">
+        <button data-mode="enforce" title="Block, mask and hold actions">Enforce</button>
+        <button data-mode="monitor" title="Shadow mode: record what would be stopped, enforce nothing">Monitor</button>
+      </div>
+      <button class="btn-kill" id="killBtn" title="Freeze every agent immediately">KILL SWITCH</button>
+      <button class="btn-ghost" id="resetBtn" title="Reset the demo company, agents and audit ledger">Reset demo</button>
+      <span class="conn" id="conn" title="Live connection"></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============================================================ COMMAND CENTER -->
+    <section id="tab-command" class="tab active">
+      <div class="kpis" id="kpis"></div>
+      <div class="grid3">
+        <aside class="col">
+          <div class="panel">
+            <div class="panel-h"><h3>Agents</h3><span class="muted small" id="agentsMeta"></span></div>
+            <div id="agents" class="agents"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3 id="worldTitle">Company systems</h3><span class="muted small">live</span></div>
+            <div id="world" class="world"></div>
+          </div>
+        </aside>
+
+        <section class="panel stream-panel">
+          <div class="panel-h">
+            <h3>Live action stream</h3>
+            <div class="quickrun" id="quickrun"></div>
+          </div>
+          <div class="stream-cols"><span>Time</span><span>Agent</span><span>Action</span><span>Risk</span><span>Decision</span></div>
+          <div id="stream" class="stream"></div>
+        </section>
+
+        <aside class="col">
+          <div class="panel">
+            <div class="panel-h"><h3>Human approvals</h3><span class="badge-count" id="apprCount">0</span></div>
+            <div id="approvals" class="approvals"></div>
+          </div>
+          <div class="panel grow">
+            <div class="panel-h"><h3>Alerts</h3><span class="muted small" id="alertsMeta"></span></div>
+            <div id="alerts" class="alerts"></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ============================================================ RED-TEAM LAB -->
+    <section id="tab-lab" class="tab">
+      <div class="lab-head">
+        <div>
+          <h2>Red-Team Lab</h2>
+          <p class="muted">Replay real attacks and agent failures through AEGIS. Every scenario runs on the simulated
+            company <b id="labCompany">Kudla Cashew Co.</b> - no API key needed. Switch to <b>Monitor</b> mode first to see
+            the damage an unguarded agent does, then <b>Reset demo</b>, switch back to <b>Enforce</b> and run it again.</p>
+        </div>
+        <button class="btn-gold" id="runAll">Run all scenarios</button>
+      </div>
+      <div id="labGrid" class="lab-grid"></div>
+    </section>
+
+    <!-- ============================================================ LIVE AGENT -->
+    <section id="tab-live" class="tab">
+      <div class="live-grid">
+        <div class="panel live-side">
+          <div class="panel-h"><h3>Live LLM agent</h3></div>
+          <p class="muted small">A real language model plans and calls tools. AEGIS sits between the model and the
+            company: it does not matter how the model was prompted or jailbroken - the policy still holds.</p>
+          <label class="lbl">Model</label>
+          <div id="providers" class="providers"></div>
+          <label class="lbl">Agent</label>
+          <div id="liveAgents" class="seg-wrap"></div>
+          <label class="lbl">Try one of these</label>
+          <div id="presets" class="presets"></div>
+        </div>
+        <div class="panel live-main">
+          <div class="panel-h"><h3>Conversation</h3><span class="muted small" id="liveStatus"></span></div>
+          <div id="chat" class="chat"></div>
+          <form id="chatForm" class="chat-form">
+            <textarea id="chatInput" rows="2" placeholder="Give the agent a task… e.g. Pay all pending vendor invoices in the inbox"></textarea>
+            <button class="btn-gold" type="submit" id="chatSend">Run agent</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ LEDGER -->
+    <section id="tab-ledger" class="tab">
+      <div class="ledger-head">
+        <div>
+          <h2>Tamper-evident audit ledger</h2>
+          <p class="muted">Every decision, approval and admin action is hash-chained: each record's SHA-256 covers the
+            previous record's hash. Change or delete any record and verification pinpoints it.</p>
+        </div>
+        <div class="row-btns">
+          <button class="btn-gold" id="verifyBtn">Verify integrity</button>
+          <button class="btn-ghost" id="tamperBtn">Simulate insider tampering</button>
+          <a class="btn-ghost" id="exportBtn" href="/api/ledger/export" download="aegis-ledger.json">Export JSON</a>
+        </div>
+      </div>
+      <div id="verifyResult" class="verify"></div>
+      <div class="panel">
+        <div class="ledger-table" id="ledgerTable"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ POLICY -->
+    <section id="tab-policy" class="tab">
+      <div class="policy-grid">
+        <div class="col">
+          <div class="panel">
+            <div class="panel-h"><h3>Least-privilege matrix</h3><span class="muted small">which agent may call which tool</span></div>
+            <div id="matrix" class="matrix-wrap"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>Custom rules</h3><span class="muted small">policy-as-code</span></div>
+            <div id="rules"></div>
+          </div>
+        </div>
+        <div class="panel editor-panel">
+          <div class="panel-h"><h3>policies/default.yaml</h3><span class="muted small mono" id="policySha"></span></div>
+          <textarea id="policyText" spellcheck="false"></textarea>
+          <div class="editor-foot">
+            <span id="policyMsg" class="muted small">Edit and apply - changes take effect instantly and are written to the ledger.</span>
+            <div class="row-btns">
+              <button class="btn-ghost" id="policyRevert">Revert</button>
+              <button class="btn-gold" id="policyApply">Validate &amp; apply</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="drawer" class="drawer hidden" aria-hidden="true">
+    <div class="drawer-scrim" data-close></div>
+    <div class="drawer-inner" role="dialog" aria-label="Action details"><div id="drawerBody"></div></div>
+  </div>
+  <div id="toasts" class="toasts"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

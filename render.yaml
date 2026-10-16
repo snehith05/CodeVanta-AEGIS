@@ -1,0 +1,7 @@
+# One-click deploy on Render (render.com -> New -> Blueprint -> pick this repo)
+services:
+  - type: web
+    name: aegis-codevanta
+    runtime: docker
+    plan: free
+    healthCheckPath: /v1/health

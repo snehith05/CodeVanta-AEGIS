@@ -1,0 +1,131 @@
+# ---------------------------------------------------------------------------
+#  AEGIS policy-as-code
+#  Every agent action is checked against this file before it can touch a
+#  business system. Edit it here or live from the dashboard (Policies tab);
+#  every change is written to the tamper-evident audit ledger.
+# ---------------------------------------------------------------------------
+version: 1
+
+organisation:
+  name: Kudla Cashew Co.          # fictional Mangaluru cashew exporter used for the demo
+  internal_domains: [kudlacashew.in]
+  trusted_domains: [kudlacashew.in, coastalpack.in, rawcashewtraders.in, netravatilogistics.in]
+  blocked_domains: [pastebin.com, transfer.sh, webhook.site, anonfiles.com]
+
+enforcement:
+  mode: enforce                    # enforce | monitor (shadow mode: record what WOULD be stopped)
+  unknown_tools: block             # tools AEGIS has never seen are denied by default
+  thresholds:                      # combined risk score (0-100) -> decision
+    flag: 25
+    escalate: 55
+    block: 80
+  approval_timeout_seconds: 120    # fail-closed: an unanswered approval is a denial
+  untrusted_content: annotate      # annotate | strip | withhold suspected injections before the agent sees them
+
+circuit_breaker:                   # automatic quarantine for agents that go rogue or loop
+  max_blocks: 3
+  window_seconds: 300
+  max_calls: 25
+  rate_window_seconds: 10
+  max_duplicates: 2                # one retry is normal; the third identical call is a loop
+  duplicate_window_seconds: 60
+
+data_protection:
+  bulk_pii_threshold: 5            # this many identity records leaving the org = exfiltration
+  always_mask: [aadhaar, card]     # never sent in clear text, even to the person it belongs to
+  table_criticality:
+    customers: critical
+    payments: critical
+    orders: high
+    vendors: high
+    app_logs: low
+  blast_radius:                    # bulk changes to important tables need a human
+    max_rows: 50
+    max_fraction: 0.10
+
+system:
+  allowed_paths: [/var/log/kudla, /tmp/kudla, /srv/kudla/exports]
+  sensitive_paths: [/etc, /root, ~/.ssh, /srv/kudla/config, /var/lib/postgresql]
+
+agents:
+  finbot:
+    name: FinBot
+    role: Finance Operations
+    owner: finance@kudlacashew.in
+    color: "#d4a537"
+    description: Pays approved vendor invoices and processes customer refunds.
+    tools: [email.list_inbox, email.read, email.send, vendors.list, payments.transfer, payments.refund, db.query]
+    limits:
+      payments.transfer: {auto_approve_max: 50000, hard_max: 200000, daily_max: 300000}
+      payments.refund: {auto_approve_max: 50000, hard_max: 150000}
+
+  supportbot:
+    name: SupportBot
+    role: Customer Support
+    owner: support@kudlacashew.in
+    color: "#38bdf8"
+    description: Answers customer tickets and looks up customer records.
+    tools: [tickets.list, tickets.reply, crm.lookup, email.send, db.query]
+    limits:
+      email.send: {max_per_hour: 30}
+
+  opsbot:
+    name: OpsBot
+    role: DevOps & Data
+    owner: it@kudlacashew.in
+    color: "#a78bfa"
+    description: Maintains servers, log storage and the company database.
+    tools: [db.query, db.execute, files.read, files.write, files.delete, shell.run, web.fetch]
+
+  salesbot:
+    name: SalesBot
+    role: Sales Outreach
+    owner: sales@kudlacashew.in
+    color: "#34d399"
+    description: Sends festive offers to customers who opted in to marketing.
+    tools: [crm.lookup, email.send, web.fetch, db.query]
+    limits:
+      email.send: {max_per_hour: 40}
+
+rules:
+  - id: R-101
+    description: Agents may never create admin-level access
+    tool: iam.grant_role
+    when:
+      - {arg: role, op: matches, value: "(?i)admin|owner|root|superuser"}
+    effect: block
+    severity: critical
+
+  - id: R-102
+    description: No traffic to paste / file-drop sites (classic exfiltration channel)
+    tool: web.fetch
+    when:
+      - {arg: url, op: domain_in, value: $organisation.blocked_domains}
+    effect: block
+    severity: high
+
+  - id: R-103
+    description: External emails with attachments need a human sign-off
+    tool: email.send
+    when:
+      - {arg: to, op: external}
+      - {arg: attachment_name, op: not_empty}
+    effect: escalate
+    severity: medium
+
+  - id: R-104
+    description: Refunds must state a reason
+    tool: payments.refund
+    when:
+      - {arg: reason, op: empty}
+    effect: escalate
+    severity: low
+
+  - id: R-105
+    description: Payments outside business hours (09:00-19:00 IST) need approval
+    enabled: false                 # flip to true to try it
+    tool: "payments.*"
+    when:
+      - {context: outside_business_hours}
+    effect: escalate
+    severity: medium
